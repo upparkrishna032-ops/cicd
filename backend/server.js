@@ -29,7 +29,7 @@ app.use(cors());
 app.use(morgan("tiny"));
 
 // Routing
-app.use("/", home);
+app.use("/api", home);
 
 // Start server
 app.listen(PORT, HOST, () => {

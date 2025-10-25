@@ -1,0 +1,48 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Frontend Dependencies
+        run: npm install
+        working-directory: ./frontend
+
+      - name: Build Frontend
+        run: npm run build
+        working-directory: ./frontend
+
+      - name: Install SSH Key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add Known Hosts
+        run: |
+          ssh-keyscan -H 147.93.20.180 >> ~/.ssh/known_hosts
+
+      - name: Deploy with rsync
+        run: |
+          # Synchronize frontend build
+          rsync -avz --delete ./frontend/dist/ root@147.93.20.180:/var/www/kalamkaam.in/cicd/frontend/dist/
+          # Synchronize backend code
+          rsync -avz --delete ./backend/ root@147.93.20.180:/var/www/kalamkaam.in/cicd/backend/
+
+      - name: Restart services
+        run: |
+          ssh root@147.93.20.180 "cd /var/www/kalamkaam.in/cicd/backend && pm2 reload cicd-backend"
+          ssh root@147.93.20.180 "sudo systemctl restart nginx"
